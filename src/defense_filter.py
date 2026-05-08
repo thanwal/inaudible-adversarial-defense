@@ -1,25 +1,20 @@
 import torch
 import torch.nn as nn
-import torchaudio.transforms as T
 
 class AcousticFirewall(nn.Module):
-    def __init__(self, sample_rate=16000, cutoff_freq=None):
+    def __init__(self, quantization_steps=256):
         """
-        Acoustic Feature Squeezing Defense.
-        Shatters fragile adversarial gradients via rapid downsampling/upsampling,
-        preserving the core phonetic structures required by the ASR model.
+        Acoustic Feature Squeezing via Amplitude Quantization.
+        Destroys microscopic adversarial gradients by rounding waveform tensors,
+        preserving the macroscopic human voice profile perfectly.
         """
         super(AcousticFirewall, self).__init__()
-        
-        # We compress the audio to 8000Hz, then immediately restore it to 16000Hz
-        self.downsample = T.Resample(orig_freq=sample_rate, new_freq=8000)
-        self.upsample = T.Resample(orig_freq=8000, new_freq=sample_rate)
+        self.quantization_steps = quantization_steps
 
     def forward(self, waveform):
-        # 1. Compress the audio to crush the adversarial noise
-        squeezed_audio = self.downsample(waveform)
+        # Multiply, round to the nearest integer step, and divide back.
+        # This acts as a mathematical step-function that shatters the fragile, 
+        # highly-specific PGD noise while leaving the core human voice intact.
+        squeezed_waveform = torch.round(waveform * self.quantization_steps) / self.quantization_steps
         
-        # 2. Decompress back to 16kHz so the ASR model can process it normally
-        cleaned_audio = self.upsample(squeezed_audio)
-        
-        return cleaned_audio
+        return squeezed_waveform

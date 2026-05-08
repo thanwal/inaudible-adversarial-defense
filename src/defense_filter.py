@@ -1,32 +1,25 @@
 import torch
 import torch.nn as nn
-import torchaudio.functional as F
+import torchaudio.transforms as T
 
 class AcousticFirewall(nn.Module):
-    def __init__(self, sample_rate=16000, cutoff_freq=3000.0):
+    def __init__(self, sample_rate=16000, cutoff_freq=None):
         """
-        A PyTorch spectral filter to neutralize inaudible adversarial attacks.
-        Human speech intelligible range: ~300Hz to 3000Hz.
-        Adversarial perturbation range: 4000Hz to 8000Hz.
+        Acoustic Feature Squeezing Defense.
+        Shatters fragile adversarial gradients via rapid downsampling/upsampling,
+        preserving the core phonetic structures required by the ASR model.
         """
         super(AcousticFirewall, self).__init__()
-        self.sample_rate = sample_rate
-        self.cutoff_freq = cutoff_freq
+        
+        # We compress the audio to 8000Hz, then immediately restore it to 16000Hz
+        self.downsample = T.Resample(orig_freq=sample_rate, new_freq=8000)
+        self.upsample = T.Resample(orig_freq=8000, new_freq=sample_rate)
 
     def forward(self, waveform):
-        # Apply a low-pass biquad filter.
-        # This mathematically zeros out frequencies above our 3000Hz cutoff,
-        # effectively deleting the PGD adversarial gradients from the audio tensor.
-        clean_waveform = F.lowpass_biquad(
-            waveform, 
-            self.sample_rate, 
-            self.cutoff_freq
-        )
-        return clean_waveform
-
-if __name__ == "__main__":
-    # Quick unit test to ensure the tensor math works on your SageMaker GPU
-    firewall = AcousticFirewall()
-    dummy_audio = torch.randn(1, 16000) # 1 second of random noise
-    filtered_audio = firewall(dummy_audio)
-    print(f"Firewall initialized. Input shape: {dummy_audio.shape} | Output shape: {filtered_audio.shape}")
+        # 1. Compress the audio to crush the adversarial noise
+        squeezed_audio = self.downsample(waveform)
+        
+        # 2. Decompress back to 16kHz so the ASR model can process it normally
+        cleaned_audio = self.upsample(squeezed_audio)
+        
+        return cleaned_audio

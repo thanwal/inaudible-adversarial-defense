@@ -1,23 +1,23 @@
 import torch
 import torch.nn as nn
+import torchaudio.functional as F
 
 class AcousticFirewall(nn.Module):
-    def __init__(self, noise_std=0.02):
+    def __init__(self, quantization_channels=256):
         """
-        Randomized Smoothing Defense (Gaussian Noise Injection).
-        Adversarial attacks rely on mathematically perfect, microscopic gradients. 
-        By injecting random Gaussian noise, we 'blind' the attack's precision 
-        while the neural network easily hears the human voice through the static.
+        Mu-Law Companding Defense (Telephony Compression).
+        Logarithmically compresses the audio wave. This perfectly preserves 
+        macroscopic human speech (like a phone call) while completely 
+        crushing microscopic, linear adversarial perturbations.
         """
         super(AcousticFirewall, self).__init__()
-        self.noise_std = noise_std
+        self.quantization_channels = quantization_channels
 
     def forward(self, waveform):
-        # Generate random static noise with the exact same shape as the audio
-        noise = torch.randn_like(waveform) * self.noise_std
+        # 1. Encode using Mu-Law (squashes the linear adversarial noise)
+        encoded = F.mu_law_encoding(waveform, self.quantization_channels)
         
-        # Add the static to the audio to shatter the PGD attack
-        smoothed_waveform = waveform + noise
+        # 2. Decode back to a continuous waveform for the ASR model
+        cleaned_waveform = F.mu_law_decoding(encoded, self.quantization_channels)
         
-        # Ensure the waveform doesn't exceed physical audio boundaries [-1.0, 1.0]
-        return torch.clamp(smoothed_waveform, min=-1.0, max=1.0)
+        return cleaned_waveform

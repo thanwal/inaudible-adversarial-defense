@@ -11,8 +11,7 @@ def main():
     # 1. Setup GPU and Load Models
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     asr_system = SpeechRecognitionModel(device)
-
-    firewall = AcousticFirewall(noise_std=0.002).to(device)
+    firewall = AcousticFirewall(quantization_channels=256).to(device)
 
     # ---------------------------------------------------------
     # DATA LOADER: Pulling a real file from your Kaggle Dataset
@@ -58,7 +57,9 @@ def main():
         model=asr_system.model, 
         waveform=benign_waveform, 
         target_transcript=attacker_target, 
-        iters=5 # Keep low for fast presentation demo
+        iters=5,
+        epsilon=0.001,  # Forces the attacker to be completely stealthy
+        alpha=0.0002    # Microscopic gradient steps
     )
     
     # The ASR system is tricked by the poisoned waveform
@@ -73,7 +74,7 @@ def main():
     # PHASE 3: Your Breakthrough Defense
     # ---------------------------------------------------------
     print("\n--- PHASE 3: ACOUSTIC FIREWALL DEFENSE ---")
-    print("[SYSTEM] Intercepting audio through Randomized Gaussian Smoothing...")
+    print("[SYSTEM] Intercepting audio through Mu-Law Companding Firewall...")    
     
     # Pass the poisoned audio through your PyTorch defense layer
     cleaned_waveform = firewall(poisoned_waveform)

@@ -5,7 +5,7 @@ def generate_pgd_attack(model, waveform, target_transcript, epsilon=0.05, alpha=
     Projected Gradient Descent (PGD) implementation for Audio Data.
     Based on the NDSS 2024 specifications for inaudible adversarial perturbations.
     """
-    # 1. Freeze the DeepSpeech model (we are attacking the data, not training the network)
+    # 1. Freeze the model (we are attacking the data, not training the network)
     model.eval()
     for param in model.parameters():
         param.requires_grad = False
@@ -20,12 +20,11 @@ def generate_pgd_attack(model, waveform, target_transcript, epsilon=0.05, alpha=
         model.zero_grad()
         
         # 3. Forward pass through the ASR model
-        # Note: In a full pipeline, this feeds into a CTC Loss function 
-        # compared against the attacker's target_transcript
-        outputs = model(perturbed_waveform)
+        # The model returns a tuple of (emissions, lengths). We extract just the emissions.
+        emissions, _ = model(perturbed_waveform)
         
-        # Dummy loss for structural scaffolding (will be replaced by actual CTC loss in the pipeline)
-        loss = outputs.sum() 
+        # Dummy loss for structural scaffolding
+        loss = emissions.sum() 
         
         # 4. Backward pass to find the gradients of the AUDIO, not the weights
         loss.backward()

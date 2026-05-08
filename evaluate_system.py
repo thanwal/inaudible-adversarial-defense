@@ -16,16 +16,23 @@ def main():
     # ---------------------------------------------------------
     # DATA LOADER: Pulling a real file from your Kaggle Dataset
     # ---------------------------------------------------------
-    dataset_dir = "dataset/wavs/"
+    dataset_dir = "dataset"
+    sample_audio_path = None
     
-    # Check if the folder exists and grab the first .wav file
-    try:
-        wav_files = [f for f in os.listdir(dataset_dir) if f.endswith('.wav')]
-        sample_audio_path = os.path.join(dataset_dir, wav_files[0])
-        print(f"\n[SYSTEM] Loading Real Audio Sample: {sample_audio_path}")
-    except FileNotFoundError:
-        print(f"\n[ERROR] Could not find the folder '{dataset_dir}'.")
+    # Intelligently search through all folders in 'dataset' to find a .wav file
+    for root, dirs, files in os.walk(dataset_dir):
+        for file in files:
+            if file.endswith(".wav"):
+                sample_audio_path = os.path.join(root, file)
+                break # Found one!
+        if sample_audio_path:
+            break
+
+    if not sample_audio_path:
+        print(f"\n[ERROR] Could not find any .wav files anywhere inside '{dataset_dir}'.")
         return
+        
+    print(f"\n[SYSTEM] Loading Real Audio Sample: {sample_audio_path}")
 
     # Load the real audio using your audio_utils script
     benign_waveform, sample_rate = load_audio(sample_audio_path)

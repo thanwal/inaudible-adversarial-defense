@@ -25,7 +25,7 @@ def main():
             if f.endswith('.wav'):
                 all_files.append(os.path.join(root, f))
                 
-    max_samples = 50
+    max_samples = 1000
     files_to_test = all_files[:max_samples]
     
     print(f"\n[SYSTEM] Commencing batch evaluation on {len(files_to_test)} audio samples...")

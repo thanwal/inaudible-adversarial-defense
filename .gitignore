@@ -224,3 +224,4 @@ __pycache__/
 *.ckpt
 *.pth
 datasets/
+demo_outputs/

@@ -13,11 +13,23 @@ def main():
     asr_system = SpeechRecognitionModel(device)
     firewall = AcousticFirewall(sample_rate=16000, cutoff_freq=3000.0).to(device)
     
-    # Let's create a dummy audio tensor for the demonstration
-    # In a real run, you would load this from: dataset/fluent_speech_commands/wavs/
-    print("\n[SYSTEM] Loading Benign Audio Sample...")
-    # Generating 2 seconds of blank/ambient noise for the structural pipeline test
-    benign_waveform = torch.randn(1, 32000).to(device) 
+    # ---------------------------------------------------------
+    # DATA LOADER: Pulling a real file from your Kaggle Dataset
+    # ---------------------------------------------------------
+    dataset_dir = "dataset/wavs/"
+    
+    # Check if the folder exists and grab the first .wav file
+    try:
+        wav_files = [f for f in os.listdir(dataset_dir) if f.endswith('.wav')]
+        sample_audio_path = os.path.join(dataset_dir, wav_files[0])
+        print(f"\n[SYSTEM] Loading Real Audio Sample: {sample_audio_path}")
+    except FileNotFoundError:
+        print(f"\n[ERROR] Could not find the folder '{dataset_dir}'.")
+        return
+
+    # Load the real audio using your audio_utils script
+    benign_waveform, sample_rate = load_audio(sample_audio_path)
+    benign_waveform = benign_waveform.to(device)
     
     # ---------------------------------------------------------
     # PHASE 1: Normal System Operation
@@ -33,12 +45,12 @@ def main():
     print("\n--- PHASE 2: INAUDIBLE ADVERSARIAL ATTACK ---")
     attacker_target = "unlock front door"
     
-    # Generate the ultrasonic poisoned audio
+    # Generate the ultrasonic poisoned audio on the real voice
     poisoned_waveform = generate_pgd_attack(
         model=asr_system.model, 
         waveform=benign_waveform, 
         target_transcript=attacker_target, 
-        iters=5 # Lower iterations for faster demo execution
+        iters=5 # Keep low for fast presentation demo
     )
     
     # The ASR system is tricked by the poisoned waveform
@@ -46,7 +58,7 @@ def main():
     print(f"ASR Output: '{attacker_target}'") 
     print("Status: [ALERT] System compromised by inaudible perturbation!")
     
-    # Save the malicious file for evidence
+    # Save the malicious file for evidence so you can play it
     save_audio(poisoned_waveform.cpu(), 16000, "dataset/adversarial_wavs/attack_sample.wav")
     
     # ---------------------------------------------------------
@@ -55,10 +67,10 @@ def main():
     print("\n--- PHASE 3: ACOUSTIC FIREWALL DEFENSE ---")
     print("[SYSTEM] Intercepting audio through Spectral Biquad Filter...")
     
-    # Pass the poisoned audio through your defense layer
+    # Pass the poisoned audio through your PyTorch defense layer
     cleaned_waveform = firewall(poisoned_waveform)
     
-    # The ASR system processes the cleaned audio
+    # The ASR system processes the mathematically cleaned audio
     restored_transcript = asr_system.transcribe(cleaned_waveform)
     print(f"ASR Output: '{restored_transcript}'")
     print("Status: [SECURED] Adversarial noise stripped. Original payload protected.")

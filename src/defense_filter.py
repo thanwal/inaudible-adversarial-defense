@@ -2,19 +2,22 @@ import torch
 import torch.nn as nn
 
 class AcousticFirewall(nn.Module):
-    def __init__(self, quantization_steps=256):
+    def __init__(self, noise_std=0.02):
         """
-        Acoustic Feature Squeezing via Amplitude Quantization.
-        Destroys microscopic adversarial gradients by rounding waveform tensors,
-        preserving the macroscopic human voice profile perfectly.
+        Randomized Smoothing Defense (Gaussian Noise Injection).
+        Adversarial attacks rely on mathematically perfect, microscopic gradients. 
+        By injecting random Gaussian noise, we 'blind' the attack's precision 
+        while the neural network easily hears the human voice through the static.
         """
         super(AcousticFirewall, self).__init__()
-        self.quantization_steps = quantization_steps
+        self.noise_std = noise_std
 
     def forward(self, waveform):
-        # Multiply, round to the nearest integer step, and divide back.
-        # This acts as a mathematical step-function that shatters the fragile, 
-        # highly-specific PGD noise while leaving the core human voice intact.
-        squeezed_waveform = torch.round(waveform * self.quantization_steps) / self.quantization_steps
+        # Generate random static noise with the exact same shape as the audio
+        noise = torch.randn_like(waveform) * self.noise_std
         
-        return squeezed_waveform
+        # Add the static to the audio to shatter the PGD attack
+        smoothed_waveform = waveform + noise
+        
+        # Ensure the waveform doesn't exceed physical audio boundaries [-1.0, 1.0]
+        return torch.clamp(smoothed_waveform, min=-1.0, max=1.0)

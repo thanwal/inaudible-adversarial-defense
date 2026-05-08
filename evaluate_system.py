@@ -11,8 +11,9 @@ def main():
     # 1. Setup GPU and Load Models
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     asr_system = SpeechRecognitionModel(device)
-    firewall = AcousticFirewall(sample_rate=16000, cutoff_freq=3000.0).to(device)
-    
+
+    firewall = AcousticFirewall(noise_std=0.002).to(device)
+
     # ---------------------------------------------------------
     # DATA LOADER: Pulling a real file from your Kaggle Dataset
     # ---------------------------------------------------------
@@ -72,7 +73,7 @@ def main():
     # PHASE 3: Your Breakthrough Defense
     # ---------------------------------------------------------
     print("\n--- PHASE 3: ACOUSTIC FIREWALL DEFENSE ---")
-    print("[SYSTEM] Intercepting audio through Spectral Biquad Filter...")
+    print("[SYSTEM] Intercepting audio through Randomized Gaussian Smoothing...")
     
     # Pass the poisoned audio through your PyTorch defense layer
     cleaned_waveform = firewall(poisoned_waveform)
